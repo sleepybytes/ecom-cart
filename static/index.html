@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart API Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+
+    #clear-btn {
+      background: #e53e3e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    #clear-btn:hover { background: #c53030; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 460px;
+      gap: 0;
+      height: calc(100vh - 53px);
+    }
+
+    /* ── Products panel ── */
+    #products-panel {
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid #ddd;
+      background: #fff;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.82rem;
+      text-transform: capitalize;
+    }
+    .filter-btn.active {
+      background: #1a1a2e;
+      color: #fff;
+      border-color: #1a1a2e;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .product-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .product-card .name { font-weight: 600; font-size: 0.95rem; }
+    .product-card .category { font-size: 0.75rem; color: #666; text-transform: capitalize; }
+
+    .price-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+    .original-price { font-size: 0.9rem; color: #888; text-decoration: line-through; }
+    .discounted-price { font-size: 1rem; font-weight: 700; color: #276749; }
+    .regular-price { font-size: 1rem; font-weight: 700; }
+    .promo-badge {
+      background: #c6f6d5;
+      color: #276749;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .inventory-note { font-size: 0.75rem; color: #888; }
+
+    .add-btn {
+      margin-top: auto;
+      padding: 7px;
+      border: none;
+      border-radius: 7px;
+      background: #1a1a2e;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .add-btn:hover { background: #2d2d5e; }
+
+    /* ── Cart panel ── */
+    #cart-panel {
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    #cart-panel h2 { padding: 16px 20px 10px; font-size: 1rem; border-bottom: 1px solid #eee; }
+
+    .delivery-row {
+      padding: 10px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.83rem;
+    }
+    .delivery-row label { color: #555; white-space: nowrap; }
+    #delivery-input { border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px; font-size: 0.83rem; flex: 1; }
+
+    #cart-items { flex: 1; overflow-y: auto; padding: 10px 20px; }
+
+    .empty-msg { color: #aaa; font-size: 0.9rem; padding: 20px 0; }
+
+    .cart-item { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
+
+    .cart-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .cart-item-name { font-weight: 600; font-size: 0.9rem; }
+    .cart-item-unit { font-size: 0.78rem; color: #777; }
+
+    .qty-controls { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 24px; height: 24px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+    .qty-btn:hover { background: #f0f0f0; }
+    .qty-display { font-size: 0.9rem; min-width: 20px; text-align: center; }
+    .remove-btn { background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 0.78rem; padding: 0; }
+    .remove-btn:hover { text-decoration: underline; }
+
+    /* ── Promotion rows ── */
+    .promo-section { margin-top: 6px; }
+
+    .applied-promo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f0fff4;
+      border: 1px solid #9ae6b4;
+      border-radius: 5px;
+      padding: 4px 8px;
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: #276749;
+    }
+    .applied-promo-row .promo-label { flex: 1; }
+    .applied-promo-row .promo-discount { font-weight: 600; margin: 0 8px; }
+    .remove-promo-btn {
+      background: none;
+      border: none;
+      color: #e53e3e;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0;
+      white-space: nowrap;
+    }
+    .remove-promo-btn:hover { text-decoration: underline; }
+
+    .eligible-header {
+      font-size: 0.74rem;
+      color: #888;
+      margin-top: 6px;
+      margin-bottom: 2px;
+    }
+
+    .eligible-promo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fffbeb;
+      border: 1px solid #f6e05e;
+      border-radius: 5px;
+      padding: 4px 8px;
+      margin-top: 3px;
+      font-size: 0.78rem;
+      color: #744210;
+    }
+    .eligible-promo-row .promo-label { flex: 1; }
+    .eligible-promo-row .promo-discount { font-weight: 600; margin: 0 8px; }
+    .apply-promo-btn {
+      background: #1a1a2e;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .apply-promo-btn:hover { background: #2d2d5e; }
+
+    .cart-item-line-total { font-size: 0.85rem; font-weight: 600; margin-top: 6px; }
+
+    /* ── Totals ── */
+    #cart-totals { border-top: 1px solid #eee; padding: 14px 20px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 5px; }
+    .total-row.grand { font-weight: 700; font-size: 1rem; margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; }
+    .discount-val { color: #276749; }
+
+    /* ── Warnings ── */
+    #warnings-box { padding: 0 20px 14px; }
+    .warning-item { font-size: 0.78rem; padding: 5px 8px; border-radius: 5px; margin-top: 5px; }
+    .warning-item.promo { background: #fffbeb; color: #92400e; border-left: 3px solid #f6ad55; }
+    .warning-item.inv   { background: #fff5f5; color: #c53030; border-left: 3px solid #fc8181; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Cart API Demo</h1>
+  <button id="clear-btn">Clear Cart</button>
+</header>
+
+<div class="layout">
+  <!-- Products -->
+  <div id="products-panel">
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" data-cat="">All</button>
+    </div>
+    <div class="products-grid" id="products-grid"></div>
+  </div>
+
+  <!-- Cart -->
+  <div id="cart-panel">
+    <h2>Cart</h2>
+    <div class="delivery-row">
+      <label for="delivery-input">Delivery time:</label>
+      <input type="datetime-local" id="delivery-input" />
+    </div>
+    <div id="cart-items">
+      <p class="empty-msg">Your cart is empty.</p>
+    </div>
+    <div id="cart-totals" style="display:none">
+      <div class="total-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+      <div class="total-row"><span>Discount</span><span class="discount-val" id="discount">-$0.00</span></div>
+      <div class="total-row grand"><span>Total</span><span id="total">$0.00</span></div>
+    </div>
+    <div id="warnings-box"></div>
+  </div>
+</div>
+
+<script>
+  const BASE = "";
+  let allProducts = [];
+  let activeCategory = "";
+  let activePromotions = [];
+
+  // ── fetch helpers ──────────────────────────────────────────
+  async function api(path, opts = {}) {
+    const res = await fetch(BASE + path, {
+      headers: { "Content-Type": "application/json" },
+      ...opts,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "Request failed");
+    }
+    return res.json();
+  }
+
+  // ── bootstrap ─────────────────────────────────────────────
+  async function init() {
+    const [products, promos] = await Promise.all([
+      api("/products"),
+      api("/promotions"),
+    ]);
+    allProducts = products;
+    activePromotions = promos.filter(p => p.status === "active");
+    buildFilters(products);
+    renderProducts(products);
+    await refreshCart();
+  }
+
+  // ── category filters ──────────────────────────────────────
+  function buildFilters(products) {
+    const cats = [...new Set(products.map(p => p.category))].sort();
+    const bar = document.getElementById("filter-bar");
+    cats.forEach(cat => {
+      const btn = document.createElement("button");
+      btn.className = "filter-btn";
+      btn.dataset.cat = cat;
+      btn.textContent = cat;
+      btn.addEventListener("click", () => setCategory(cat));
+      bar.appendChild(btn);
+    });
+    bar.querySelector("[data-cat='']").addEventListener("click", () => setCategory(""));
+  }
+
+  function setCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll(".filter-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.cat === cat);
+    });
+    const filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
+    renderProducts(filtered);
+  }
+
+  // ── product cards ─────────────────────────────────────────
+  function bestPromoForProduct(productId) {
+    return activePromotions
+      .filter(p => p.applicable_product_ids.includes(productId))
+      .sort((a, b) => b.value - a.value)[0] || null;
+  }
+
+  function renderProducts(products) {
+    const grid = document.getElementById("products-grid");
+    grid.innerHTML = "";
+    products.forEach(p => {
+      const promo = bestPromoForProduct(p.id);
+      const card = document.createElement("div");
+      card.className = "product-card";
+
+      let priceHtml = "";
+      if (promo) {
+        const disc = promo.type === "PERCENTAGE"
+          ? p.price * (promo.value / 100)
+          : Math.min(promo.value, p.price);
+        const after = (p.price - disc).toFixed(2);
+        priceHtml = `
+          <div class="price-row">
+            <span class="original-price">$${p.price.toFixed(2)}</span>
+            <span class="discounted-price">$${after}</span>
+            <span class="promo-badge">${promo.type === "PERCENTAGE" ? promo.value + "% OFF" : "$" + promo.value + " OFF"}</span>
+          </div>`;
+      } else {
+        priceHtml = `<div class="price-row"><span class="regular-price">$${p.price.toFixed(2)}</span></div>`;
+      }
+
+      card.innerHTML = `
+        <span class="name">${p.name}</span>
+        <span class="category">${p.category}</span>
+        ${priceHtml}
+        <span class="inventory-note">${p.inventory} in stock</span>
+        <button class="add-btn" data-id="${p.id}">Add to Cart</button>`;
+
+      card.querySelector(".add-btn").addEventListener("click", () => addToCart(p.id));
+      grid.appendChild(card);
+    });
+  }
+
+  // ── cart actions ──────────────────────────────────────────
+  async function addToCart(productId) {
+    try {
+      await api("/cart/items", {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId, quantity: 1 }),
+      });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function updateQty(itemId, quantity) {
+    try {
+      await api(`/cart/items/${itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ quantity }),
+      });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function removeItem(itemId) {
+    try {
+      await api(`/cart/items/${itemId}`, { method: "DELETE" });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function applyPromo(itemId, promoId) {
+    try {
+      await api(`/cart/items/${itemId}/promotions`, {
+        method: "POST",
+        body: JSON.stringify({ promotion_id: promoId }),
+      });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function removePromo(itemId, promoId) {
+    try {
+      await api(`/cart/items/${itemId}/promotions/${promoId}`, { method: "DELETE" });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  }
+
+  document.getElementById("clear-btn").addEventListener("click", async () => {
+    try {
+      await api("/cart", { method: "DELETE" });
+      await refreshCart();
+    } catch (e) { alert(e.message); }
+  });
+
+  // ── delivery time ─────────────────────────────────────────
+  document.getElementById("delivery-input").addEventListener("change", refreshCart);
+
+  function getDeliveryParam() {
+    const val = document.getElementById("delivery-input").value;
+    if (!val) return "";
+    return `?delivery_time=${encodeURIComponent(new Date(val).toISOString())}`;
+  }
+
+  // ── render cart ───────────────────────────────────────────
+  async function refreshCart() {
+    const cart = await api(`/cart${getDeliveryParam()}`);
+    renderCart(cart);
+  }
+
+  function renderCart(cart) {
+    const container = document.getElementById("cart-items");
+    const totalsEl = document.getElementById("cart-totals");
+    const warningsEl = document.getElementById("warnings-box");
+
+    if (!cart.items.length) {
+      container.innerHTML = '<p class="empty-msg">Your cart is empty.</p>';
+      totalsEl.style.display = "none";
+      warningsEl.innerHTML = "";
+      return;
+    }
+
+    container.innerHTML = "";
+    cart.items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "cart-item";
+
+      // Applied promotions
+      let appliedHtml = "";
+      if (item.applied_promotions.length) {
+        appliedHtml = item.applied_promotions.map(p => `
+          <div class="applied-promo-row">
+            <span class="promo-label">${p.description}</span>
+            <span class="promo-discount">-$${p.total_discount.toFixed(2)}</span>
+            <button class="remove-promo-btn" data-item="${item.id}" data-promo="${p.id}">Remove</button>
+          </div>`).join("");
+      }
+
+      // Eligible (not yet applied) promotions
+      let eligibleHtml = "";
+      if (item.eligible_promotions.length) {
+        eligibleHtml = `<div class="eligible-header">Available promotions:</div>` +
+          item.eligible_promotions.map(p => `
+            <div class="eligible-promo-row">
+              <span class="promo-label">${p.description}</span>
+              <span class="promo-discount">-$${p.discount_amount.toFixed(2)}</span>
+              <button class="apply-promo-btn" data-item="${item.id}" data-promo="${p.id}">Apply</button>
+            </div>`).join("");
+      }
+
+      div.innerHTML = `
+        <div class="cart-item-top">
+          <div>
+            <div class="cart-item-name">${item.product_name}</div>
+            <div class="cart-item-unit">$${item.unit_price_at_add.toFixed(2)} / unit</div>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn dec" data-id="${item.id}" data-qty="${item.quantity}">−</button>
+            <span class="qty-display">${item.quantity}</span>
+            <button class="qty-btn inc" data-id="${item.id}" data-qty="${item.quantity}">+</button>
+            <button class="remove-btn" data-id="${item.id}">remove</button>
+          </div>
+        </div>
+        <div class="promo-section">
+          ${appliedHtml}
+          ${eligibleHtml}
+        </div>
+        <div class="cart-item-line-total">Line total: $${item.line_total.toFixed(2)}</div>`;
+
+      div.querySelector(".dec").addEventListener("click", e => {
+        const id = +e.target.dataset.id, q = +e.target.dataset.qty;
+        if (q <= 1) removeItem(id); else updateQty(id, q - 1);
+      });
+      div.querySelector(".inc").addEventListener("click", e => {
+        updateQty(+e.target.dataset.id, +e.target.dataset.qty + 1);
+      });
+      div.querySelector(".remove-btn").addEventListener("click", e => {
+        removeItem(+e.target.dataset.id);
+      });
+      div.querySelectorAll(".remove-promo-btn").forEach(btn => {
+        btn.addEventListener("click", e => removePromo(+e.target.dataset.item, e.target.dataset.promo));
+      });
+      div.querySelectorAll(".apply-promo-btn").forEach(btn => {
+        btn.addEventListener("click", e => applyPromo(+e.target.dataset.item, e.target.dataset.promo));
+      });
+
+      container.appendChild(div);
+    });
+
+    // totals
+    totalsEl.style.display = "block";
+    document.getElementById("subtotal").textContent = `$${cart.subtotal.toFixed(2)}`;
+    document.getElementById("discount").textContent = `-$${cart.total_discount.toFixed(2)}`;
+    document.getElementById("total").textContent = `$${cart.total.toFixed(2)}`;
+
+    // warnings
+    warningsEl.innerHTML = "";
+    cart.warnings.forEach(w => {
+      const el = document.createElement("div");
+      el.className = "warning-item promo";
+      el.textContent = w;
+      warningsEl.appendChild(el);
+    });
+    cart.inventory_warnings.forEach(w => {
+      const el = document.createElement("div");
+      el.className = "warning-item inv";
+      el.textContent = w;
+      warningsEl.appendChild(el);
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
