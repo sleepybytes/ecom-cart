@@ -317,4 +317,3 @@ Applies to: promo_1→p2,p3 | promo_2→p7,p15 | promo_3→p10,p11 | promo_4→p
 | Fixed discount floor | Capped at item total | Prevents negative line prices |
 | Inventory conflict | Soft warning, item remains | User decides whether to adjust quantity or check out anyway |
 | Upsert on add | Adding existing product increments quantity | More intuitive than duplicate line items |
-# ecom-cart
